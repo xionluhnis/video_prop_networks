@@ -53,9 +53,13 @@ def set_bnn_identity_params(params):
     return
 
 
-def run_segmentation(stage_id, fold_id = -1):
+def run_segmentation(stage_id, fold_id = -1, sampling = -1, gt0 = 0):
 
     gc.enable()
+
+    suffix = ''
+    if sampling > -1:
+        suffix = '_P%d' % sampling
 
     if stage_id > 0:
         caffe_model = SELECTED_MODEL_DIR + 'SEG_FOLD' + str(fold_id) + '_' + 'STAGE' + str(stage_id) +\
@@ -67,13 +71,13 @@ def run_segmentation(stage_id, fold_id = -1):
             prev_unary_folder = STAGE_UNARY_DIR + 'FOLD' + str(fold_id) + '_STAGE' +\
                 str(stage_id - 1) + '_UNARY/'
 
-        all_seqs_prev_unary = np.load(prev_unary_folder + 'all_seqs_unary.npy').item()
+        all_seqs_prev_unary = np.load(prev_unary_folder + 'all_seqs_unary' + suffix + '.npy').item()
         main_unary_folder = STAGE_UNARY_DIR + 'FOLD' + str(fold_id) + '_STAGE' +\
-            str(stage_id) + '_UNARY/'
+            str(stage_id) + '_UNARY' + suffix + '/'
     else:
-        main_unary_folder = STAGE_UNARY_DIR + 'STAGE0_UNARY/'
+        main_unary_folder = STAGE_UNARY_DIR + 'STAGE0_UNARY' + suffix + '/'
 
-    out_folder = STAGE_RESULT_DIR + 'STAGE' + str(stage_id) + '_RESULT/'
+    out_folder = STAGE_RESULT_DIR + 'STAGE' + str(stage_id) + '_RESULT' + suffix + '/'
 
     if fold_id == -1:
         seq_list_f = SEQ_LIST_FILE
@@ -145,6 +149,12 @@ def run_segmentation(stage_id, fold_id = -1):
                 print(t)
                 im_file = IMAGE_FOLDER + seq + '/' + str(t).zfill(5) + '.jpg'
                 [pad_im, im] = transform_and_get_image(im_file, [481, 857])
+
+                # Updating unary given sampling and our labels
+                if sampling > -1 and ((t - 1) % sampling == 0) and (t > 1 or gt0):
+                    frame_input = fetch_and_transform_data(seq, t-1, ['label'])
+                    inputs['unary'][:, :, [t-1], :] = frame_input['label']
+
                 if stage_id > 0:
                     net_inputs['padimg'] = pad_im
                     net_inputs['img'] = im
@@ -188,19 +198,24 @@ def run_segmentation(stage_id, fold_id = -1):
                 inputs['unary'] = np.append(inputs['unary'],
                                             prev_frame_unary_spixels,
                                             axis=2)
+
                 gc.collect()
 
             all_seqs_unary[seq] = all_frame_unary
 
-    np.save(main_unary_folder + '/all_seqs_unary.npy', all_seqs_unary)
+    np.save(main_unary_folder + '/all_seqs_unary' + suffix + '.npy', all_seqs_unary)
 
     return
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage: ' + sys.argv[0] + ' <stage_id> <fold_id=-1>')
+        print('Usage: ' + sys.argv[0] + ' <stage_id> <fold_id=-1> <sampling=-1> <gt0=0>')
     elif len(sys.argv) < 3:
         run_segmentation(int(sys.argv[1]))
-    else:
+    elif len(sys.argv) < 4:
         run_segmentation(int(sys.argv[1]), int(sys.argv[2]))
+    elif len(sys.argv) < 5:
+        run_segmentation(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]))
+    else:
+        run_segmentation(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])

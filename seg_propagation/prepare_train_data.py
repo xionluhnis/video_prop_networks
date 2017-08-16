@@ -32,14 +32,28 @@ image_folder = IMAGE_FOLDER
 feature_folder = SPIXELFEATURE_FOLDER
 spixel_folder = SUPERPIXEL_FOLDER
 gt_folder = GT_FOLDER
-lb_folder = LB_FOLDER
 spixel_gt_folder = SPIXEL_GT_FOLDER
+
+
+if len(sys.argv) > 2:
+    print('Usage: ' + sys.argv[0] + ' <labeldir=gtdir>')
+elif len(sys.argv) == 2:
+    lb_folder = sys.argv[1]
+    if not(os.path.isdir(lb_folder)):
+        print "Invalid label directory: %s" % lb_folder
+        exit(1)
+    print "Using labels in %s\n" % lb_folder
+    using_labels = True
+else:
+    lb_folder = None
+    using_labels = False
 
 all_seqs_features = {}
 all_seqs_spixels = {}
 all_seqs_gt = {}
 all_seqs_spixel_gt = {}
-all_seqs_spixel_full_gt = {}
+all_seqs_spixels_gt = {}
+all_seqs_spixels_lb = {}
 
 max_spixels = MAX_SPIXELS
 ignore_feat_value = -1000
@@ -111,12 +125,15 @@ with open(seq_list_file,'r') as f:
         seq = seq[:-1]
         seq_dir = image_folder + seq + '/';
         seq_gt_dir = gt_folder + seq + '/'
-        seq_lb_dir = lb_folder + seq + '/'
+        if using_labels:
+            seq_lb_dir = lb_folder + seq + '/'
 
         # Iterate over all frames in each sequence
         frame_no = 0
         all_frame_features = None
         all_frame_spixels = None
+        all_frame_spixels_gt = None
+        all_frame_spixels_lb = None
         all_frame_gt = None
         spixel_gt = None
         print(seq)
@@ -158,34 +175,50 @@ with open(seq_list_file,'r') as f:
 
                 # Prepare GT file
                 gt_file = seq_gt_dir + str(frame_no).zfill(5) + '.png'
-                lb_file = seq_lb_dir + str(frame_no).zfill(5) + '.png'
-                r = png.Reader(gt_file)
-                width, height, data, meta = r.read()
+                r_gt = png.Reader(gt_file)
+                width, height, data, meta = r_gt.read()
                 gt = np.vstack(itertools.imap(np.uint8, data))
                 gt[gt==255] = 1
+
                 if all_frame_gt is None:
                     all_frame_gt = gt
                 else:
                     all_frame_gt = np.append(all_frame_gt, gt, axis=1)
 
-                if frame_no == 0:
-                    spixel_gt = convert_to_spixel_gt(gt, spixel_indices)
-                    spixel_full_gt = spixel_gt
+                spixel_gt = convert_to_spixel_gt(gt, spixel_indices)
+                if all_frame_spixels_gt is None:
+                    all_frame_spixels_gt = spixel_gt
                 else:
-                    spixel_next_gt = convert_to_spixel_gt(gt, spixel_indices)
-                    spixel_full_gt = np.append(spixel_full_gt, spixel_next_gt, axis=0)
+                    all_frame_spixels_gt = np.append(all_frame_spixels_gt, spixel_gt, axis=0)
+
+                # prepare label file
+                if using_labels:
+                    lb_file = seq_lb_dir + str(frame_no).zfill(5) + '.png'
+                    r_lb = png.Reader(lb_file)
+                    width, height, data, meta = r_lb.read()
+                    lb = np.vstack(itertools.imap(np.uint8, data))
+                    lb[lb==255] = 1
+                    
+                    spixel_lb = convert_to_spixel_gt(lb, spixel_indices)
+                    if all_frame_spixels_lb is None:
+                        all_frame_spixels_lb = spixel_lb
+                    else:
+                        all_frame_spixels_lb = np.append(all_frame_spixels_lb, spixel_lb, axis=0)
+                
                 frame_no += 1
             else:
                 break
 
         all_seqs_gt[seq] = all_frame_gt
-        all_seqs_spixel_gt[seq] = spixel_gt
-        all_seqs_spixel_full_gt[seq] = spixel_full_gt
+        all_seqs_spixel_gt[seq] = all_frame_spixels_gt[0,:] # single first frame
+        all_seqs_spixels_gt[seq] = all_frame_spixels_gt
+        all_seqs_spixels_lb[seq] = all_frame_spixels_lb
         all_seqs_spixels[seq] = all_frame_spixels
         all_seqs_features[seq] = all_frame_features
 
 np.save(spixel_folder + '/all_seqs_spixels.npy', all_seqs_spixels)
 np.save(feature_folder + '/all_seqs_features.npy', all_seqs_features)
 np.save(gt_folder + '/all_seqs_gt.npy', all_seqs_gt)
-np.save(spixel_gt_folder + '/all_seqs_spixel_gt.npy', all_seqs_spixel_gt)
-np.save(spixel_gt_folder + '/all_seqs_spixel_full_gt.npy', all_seqs_spixel_full_gt)
+np.save(spixel_gt_folder + '/all_seqs_spixel_gt.npy', all_seqs_spixel_gt) # old version with single first frame
+np.save(spixel_gt_folder + '/all_seqs_spixels_gt.npy', all_seqs_spixels_gt) # newer version with all frames
+np.save(spixel_gt_folder + '/all_seqs_spixels_lb.npy', all_seqs_spixels_lb)

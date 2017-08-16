@@ -26,11 +26,22 @@ print('Loading Data...')
 t1 = time.time()
 all_seqs_features = np.load(SPIXELFEATURE_FOLDER  + 'all_seqs_features.npy').item()
 all_seqs_gt = np.load(SPIXEL_GT_FOLDER + 'all_seqs_spixel_gt.npy').item()
+all_seqs_gt_loaded = False
+all_seqs_lb = None
 all_seqs_spixels = np.load(SUPERPIXEL_FOLDER + 'all_seqs_spixels.npy').item()
 print(time.time() - t1)
 print('Finished Loading Data.')
 
 max_spixels = MAX_SPIXELS
+
+def load_gt(frame_idx = 0):
+    if frame_idx > 0 and not(all_seqs_gt_loaded):
+        all_seqs_gt = np.load(SPIXEL_GT_FOLDER + 'all_seqs_spixels_gt.npy').item()
+        all_seqs_gt_loaded = True
+
+def load_labels():
+    if all_seqs_lb is None:
+        all_seqs_lb = np.load(SPIXEL_GT_FOLDER + 'all_seqs_spixels_lb.npy').item()
 
 def transform_and_get_image(im_file, out_size):
 
@@ -64,9 +75,15 @@ ilsvrc_2012_mean.npy').mean(1).mean(1)
 
     return [im, im[:,:,:480,:854]]
 
-def transform_and_get_unary(seqname):
-    # First frame ground-truth
-    gt = all_seqs_gt[seqname][0, :]
+def transform_and_get_unary(seqname, frame_idx=0, use_label=False):
+    if use_label:
+        # lazy loading of label data
+        load_labels()
+        gt = all_seqs_lb[seqname][frame_idx, :]
+    else:
+        # lazy loading of non-first frame gt
+        load_gt(frame_idx)
+        gt = all_seqs_gt[seqname][frame_idx, :]
     unary = np.zeros((1, 2, 1, gt.shape[0]))
     unary[0,0,0,:][gt==0] = 1
     unary[0,1,0,:][gt==1] = 1
@@ -121,7 +138,9 @@ def fetch_and_transform_data(seqname,
     num_out_frames = 0
     for in_name in out_types:
         if in_name == 'unary':
-            inputs['unary'] = transform_and_get_unary(seqname)
+            inputs['unary'] = transform_and_get_unary(seqname, frame_idx)
+        if in_name == 'label':
+            inputs['label'] = transform_and_get_unary(seqname, frame_idx, True)
         if in_name == 'spixel_indices':
             inputs['spixel_indices'] = transform_and_get_spixels(seqname, frame_idx,
                                                                  fix_num_frames)
