@@ -32,12 +32,14 @@ image_folder = IMAGE_FOLDER
 feature_folder = SPIXELFEATURE_FOLDER
 spixel_folder = SUPERPIXEL_FOLDER
 gt_folder = GT_FOLDER
+lb_folder = LB_FOLDER
 spixel_gt_folder = SPIXEL_GT_FOLDER
 
 all_seqs_features = {}
 all_seqs_spixels = {}
 all_seqs_gt = {}
 all_seqs_spixel_gt = {}
+all_seqs_spixel_full_gt = {}
 
 max_spixels = MAX_SPIXELS
 ignore_feat_value = -1000
@@ -109,6 +111,7 @@ with open(seq_list_file,'r') as f:
         seq = seq[:-1]
         seq_dir = image_folder + seq + '/';
         seq_gt_dir = gt_folder + seq + '/'
+        seq_lb_dir = lb_folder + seq + '/'
 
         # Iterate over all frames in each sequence
         frame_no = 0
@@ -155,6 +158,7 @@ with open(seq_list_file,'r') as f:
 
                 # Prepare GT file
                 gt_file = seq_gt_dir + str(frame_no).zfill(5) + '.png'
+                lb_file = seq_lb_dir + str(frame_no).zfill(5) + '.png'
                 r = png.Reader(gt_file)
                 width, height, data, meta = r.read()
                 gt = np.vstack(itertools.imap(np.uint8, data))
@@ -166,13 +170,17 @@ with open(seq_list_file,'r') as f:
 
                 if frame_no == 0:
                     spixel_gt = convert_to_spixel_gt(gt, spixel_indices)
-
+                    spixel_full_gt = spixel_gt
+                else:
+                    spixel_next_gt = convert_to_spixel_gt(gt, spixel_indices)
+                    spixel_full_gt = np.append(spixel_full_gt, spixel_next_gt, axis=0)
                 frame_no += 1
             else:
                 break
 
         all_seqs_gt[seq] = all_frame_gt
         all_seqs_spixel_gt[seq] = spixel_gt
+        all_seqs_spixel_full_gt[seq] = spixel_full_gt
         all_seqs_spixels[seq] = all_frame_spixels
         all_seqs_features[seq] = all_frame_features
 
@@ -180,3 +188,4 @@ np.save(spixel_folder + '/all_seqs_spixels.npy', all_seqs_spixels)
 np.save(feature_folder + '/all_seqs_features.npy', all_seqs_features)
 np.save(gt_folder + '/all_seqs_gt.npy', all_seqs_gt)
 np.save(spixel_gt_folder + '/all_seqs_spixel_gt.npy', all_seqs_spixel_gt)
+np.save(spixel_gt_folder + '/all_seqs_spixel_full_gt.npy', all_seqs_spixel_full_gt)

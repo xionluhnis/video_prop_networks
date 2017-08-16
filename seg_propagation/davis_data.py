@@ -21,6 +21,7 @@ MAX_SPIXELS = 12000
 SEQ_LIST_FILE = '../data/fold_list/all_seqs.txt'
 IMAGE_FOLDER = '../data/DAVIS/JPEGImages/480p/'
 GT_FOLDER = '../data/DAVIS/Annotations/480p/'
+LB_FOLDER = '../data/DAVIS/Results/Segmentations/480p/crowdroto_ours-mean/'
 IMAGESET_FOLDER = '../data/fold_list/'
 
 SUPERPIXEL_FOLDER = '../data/gslic_spixels/'

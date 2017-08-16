@@ -106,6 +106,7 @@ def run_segmentation(stage_id, fold_id = -1):
         for seq in f:
             print(seq)
             seq = seq[:-1]
+            # change call(seq, 0 ...) to call(seq, X, ...) to use a different initial frame
             [inputs, num_frames] = fetch_and_transform_data(seq, 0,
                                                             ['unary','in_features','out_features','spixel_indices'],
                                                             feature_scales)
@@ -147,7 +148,7 @@ def run_segmentation(stage_id, fold_id = -1):
                 if stage_id > 0:
                     net_inputs['padimg'] = pad_im
                     net_inputs['img'] = im
-                if t < f_value:
+                if t < f_value: # before buffer is full (early part of sequence)
                     net_inputs['unary'] = copy.copy(inputs['unary'])
                     net_inputs['in_features'] = copy.copy(inputs['out_features'][:, :, 0:t, :])
                     net_inputs['out_features'] = copy.copy(inputs['out_features'][:, :, [t], :])
@@ -161,7 +162,7 @@ def run_segmentation(stage_id, fold_id = -1):
                     net.forward_all(**net_inputs)
                     prev_frame_unary = net.blobs['out_seg'].data
                     prev_frame_unary_spixels = net.blobs['spixel_out_seg_final'].data
-                else:
+                else: # after buffer is full (there are at least f_value frames before
                     net_inputs['unary'] = copy.copy(inputs['unary'][:, :, t-f_value: t, :])
                     net_inputs['in_features'] = copy.copy(inputs['out_features'][:, :, t-f_value:t, :])
                     net_inputs['out_features'] = copy.copy(inputs['out_features'][:, :, [t], :])

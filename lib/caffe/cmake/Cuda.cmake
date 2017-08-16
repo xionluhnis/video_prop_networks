@@ -104,7 +104,7 @@ function(caffe_select_nvcc_arch_flags out_variable)
   string(REGEX MATCHALL "[0-9]+"   __cuda_arch_ptx "${__cuda_arch_ptx}")
   caffe_list_unique(__cuda_arch_bin __cuda_arch_ptx)
 
-  set(__nvcc_flags "")
+  set(__nvcc_flags "-D_FORCE_INLINES")
   set(__nvcc_archs_readable "")
 
   # Tell NVCC to add binaries for the specified GPUs
