@@ -35,11 +35,14 @@ print('Finished Loading Data.')
 max_spixels = MAX_SPIXELS
 
 def load_gt(frame_idx = 0):
+    global all_seqs_gt_loaded
+    global all_seqs_gt
     if frame_idx > 0 and not(all_seqs_gt_loaded):
         all_seqs_gt = np.load(SPIXEL_GT_FOLDER + 'all_seqs_spixels_gt.npy').item()
         all_seqs_gt_loaded = True
 
 def load_labels():
+    global all_seqs_lb
     if all_seqs_lb is None:
         all_seqs_lb = np.load(SPIXEL_GT_FOLDER + 'all_seqs_spixels_lb.npy').item()
 

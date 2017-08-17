@@ -53,7 +53,7 @@ def set_bnn_identity_params(params):
     return
 
 
-def run_segmentation(stage_id, fold_id = -1, sampling = -1, gt0 = 0):
+def run_segmentation(stage_id, fold_id = -1, sampling = -1, use_gt0 = 0):
 
     gc.enable()
 
@@ -151,9 +151,12 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, gt0 = 0):
                 [pad_im, im] = transform_and_get_image(im_file, [481, 857])
 
                 # Updating unary given sampling and our labels
-                if sampling > -1 and ((t - 1) % sampling == 0) and (t > 1 or gt0):
-                    frame_input = fetch_and_transform_data(seq, t-1, ['label'])
+                if sampling > -1 and ((t - 1) % sampling == 0) and (t > 1 or not(use_gt0)):
+                    frame_input = fetch_and_transform_data(seq, t-1, ['label'], feature_scales)[0]
                     inputs['unary'][:, :, [t-1], :] = frame_input['label']
+                    # special case for t=1
+                    if t is 1:
+                        all_frame_unary = inputs['unary'] # result will contain the label, not GT
 
                 if stage_id > 0:
                     net_inputs['padimg'] = pad_im
@@ -193,6 +196,11 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, gt0 = 0):
                 # For saving unaries
                 all_frame_unary = np.append(all_frame_unary, prev_frame_unary_spixels, axis=2)
 
+                # Replacing result when using labels
+                if sampling > -1 and (t % sampling == 0):
+                    frame_input = fetch_and_transform_data(seq, t, ['label'], feature_scales)[0]
+                    all_frame_unary[:, :, [t], :] = frame_input['label']
+                
                 if stage_id > 0:
                     prev_frame_unary_spixels = all_seqs_prev_unary[seq][:, :, [t], :]
                 inputs['unary'] = np.append(inputs['unary'],
@@ -210,7 +218,7 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, gt0 = 0):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage: ' + sys.argv[0] + ' <stage_id> <fold_id=-1> <sampling=-1> <gt0=0>')
+        print('Usage: ' + sys.argv[0] + ' <stage_id> <fold_id=-1> <sampling=-1> <use_gt0=0>')
     elif len(sys.argv) < 3:
         run_segmentation(int(sys.argv[1]))
     elif len(sys.argv) < 4:
@@ -218,4 +226,4 @@ if __name__ == '__main__':
     elif len(sys.argv) < 5:
         run_segmentation(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]))
     else:
-        run_segmentation(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+        run_segmentation(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
