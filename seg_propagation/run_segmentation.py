@@ -66,10 +66,10 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, use_gt0 = 0):
             '.caffemodel'
 
         if stage_id == 1:
-            prev_unary_folder = STAGE_UNARY_DIR + 'STAGE0_UNARY/'
+            prev_unary_folder = STAGE_UNARY_DIR + 'STAGE0_UNARY' + suffix + '/'
         elif stage_id > 1:
             prev_unary_folder = STAGE_UNARY_DIR + 'FOLD' + str(fold_id) + '_STAGE' +\
-                str(stage_id - 1) + '_UNARY/'
+                str(stage_id - 1) + '_UNARY' + suffix + '/'
 
         all_seqs_prev_unary = np.load(prev_unary_folder + 'all_seqs_unary' + suffix + '.npy').item()
         main_unary_folder = STAGE_UNARY_DIR + 'FOLD' + str(fold_id) + '_STAGE' +\
@@ -110,7 +110,7 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, use_gt0 = 0):
         for seq in f:
             print(seq)
             seq = seq[:-1]
-            # change call(seq, 0 ...) to call(seq, X, ...) to use a different initial frame
+            # Change call(seq, 0 ...) to call(seq, X, ...) to use a different initial frame
             [inputs, num_frames] = fetch_and_transform_data(seq, 0,
                                                             ['unary','in_features','out_features','spixel_indices'],
                                                             feature_scales)
@@ -119,8 +119,13 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, use_gt0 = 0):
             if not os.path.exists(result_folder):
                 os.makedirs(result_folder)
 
-            first_frame_gt_file = GT_FOLDER + seq + '/' + str(0).zfill(5) + '.png'
-            copyfile(first_frame_gt_file, result_folder + '/' + str(0).zfill(5) + '.png')
+            # Copying first ground truth frame
+            if sampling == -1 or use_gt0:
+                first_frame_gt_file = GT_FOLDER + seq + '/' + str(0).zfill(5) + '.png'
+                copyfile(first_frame_gt_file, result_folder + '/' + str(0).zfill(5) + '.png')
+            else:
+                first_frame_gt_file = LB_FOLDER + seq + '/' + str(0).zfill(5) + '.png'
+                copyfile(first_frame_gt_file, result_folder + '/' + str(0).zfill(5) + '.png')
 
             first_frame_spixel_unary = inputs['unary']
             all_frame_unary = first_frame_spixel_unary
@@ -188,9 +193,13 @@ def run_segmentation(stage_id, fold_id = -1, sampling = -1, use_gt0 = 0):
                     prev_frame_unary_spixels = standard_net.blobs['spixel_out_seg_final'].data
 
                 # Save result
-                result = np.squeeze(prev_frame_unary)
-                seg_result = result.argmax(axis=0)
-                misc.imsave(result_folder + '/' + str(t).zfill(5) + '.png',
+                if sampling > -1 and (t % sampling == 0):
+                    frame_gt_file = LB_FOLDER + seq + '/' + str(t).zfill(5) + '.png'
+                    copyfile(frame_gt_file, result_folder + '/' + str(t).zfill(5) + '.png')
+                else:
+                    result = np.squeeze(prev_frame_unary)
+                    seg_result = result.argmax(axis=0)
+                    misc.imsave(result_folder + '/' + str(t).zfill(5) + '.png',
                             seg_result)
 
                 # For saving unaries
