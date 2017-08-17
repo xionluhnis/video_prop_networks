@@ -5,3 +5,5 @@ build
 /lib/caffe/python/caffe/proto/caffe_pb2.py
 data/DAVIS
 img_list-*.txt
+.*swp
+*#

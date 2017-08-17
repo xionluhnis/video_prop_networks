@@ -210,7 +210,7 @@ with open(seq_list_file,'r') as f:
                 break
 
         all_seqs_gt[seq] = all_frame_gt
-        all_seqs_spixel_gt[seq] = all_frame_spixels_gt[0,:] # single first frame
+        all_seqs_spixel_gt[seq] = all_frame_spixels_gt[[0],:] # single first frame
         all_seqs_spixels_gt[seq] = all_frame_spixels_gt
         all_seqs_spixels_lb[seq] = all_frame_spixels_lb
         all_seqs_spixels[seq] = all_frame_spixels
